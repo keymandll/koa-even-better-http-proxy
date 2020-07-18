@@ -23,39 +23,7 @@ describe('body encoding', function() {
   var pngData = new Buffer(pngHex, 'hex');
   var largePngData = new Buffer(pngHex.repeat(100000), 'hex'); // 6.7MB
 
-  it('allow raw data', function(done) {
-    var filename = os.tmpdir() + '/koa-even-better-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
-    var app = new Koa();
-
-    app.use(proxy('localhost:8109', {
-      reqBodyEncoding: null,
-      proxyReqBodyDecorator: function(bodyContent) {
-        assert((new Buffer(bodyContent).toString('hex')).indexOf(pngData.toString('hex')) >= 0,
-          'body should contain same data');
-        return bodyContent;
-      }
-    }));
-
-    fs.writeFile(filename, pngData, function(err) {
-      if (err) { throw err; }
-      agent(app.callback())
-        .post('/post')
-        .attach('image', filename)
-        .end(function(err) {
-          fs.unlink(filename);
-          // This test is both broken and I think unnecessary.
-          // Its broken because http.bin no longer supports /post, but this test assertion is based on the old
-          // httpbin behavior.
-          // The assertion in the proxyReqOptDecorator above verifies the test title.
-          //var response = new Buffer(res.body.attachment.data).toString('base64');
-          //assert(response.indexOf(pngData.toString('base64')) >= 0, 'response should include original raw data');
-          done(err);
-        });
-    });
-
-  });
-
-  // In this case, the package `raw-body` will print error stack which does not mater.
+  // In this case, the package `raw-body` will print error stack which does not matter.
   it('should get 413 by posting file which is larger than 1mb without setting limit', function(done) {
     var filename = os.tmpdir() + '/koa-even-better-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
     var app = new Koa();

@@ -20,12 +20,44 @@ describe('body encoding', function() {
                'c6300010000050001' +
                '0d0a2db4000000004' +
                '9454e44ae426082';
-  var pngData = new Buffer(pngHex, 'hex');
-  var largePngData = new Buffer(pngHex.repeat(100000), 'hex'); // 6.7MB
+  var pngData = Buffer.from(pngHex, 'hex');
+  var largePngData = Buffer.from(pngHex.repeat(100000), 'hex'); // 6.7MB
 
-  // In this case, the package `raw-body` will print error stack which does not matter.
+  it('allow raw data', function(done) {
+    var filename = os.tmpdir() + '/koa-better-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
+    var app = new Koa();
+
+    app.use(proxy('localhost:8109', {
+      reqBodyEncoding: null,
+      proxyReqBodyDecorator: function(bodyContent) {
+        assert((Buffer.from(bodyContent).toString('hex')).indexOf(pngData.toString('hex')) >= 0,
+          'body should contain same data');
+        return bodyContent;
+      }
+    }));
+
+    fs.writeFile(filename, pngData, function(err) {
+      if (err) { throw err; }
+      agent(app.callback())
+        .post('/post')
+        .attach('image', filename)
+        .end(function(err) {
+          fs.unlink(filename, function() {});
+          // This test is both broken and I think unnecessary.
+          // Its broken because http.bin no longer supports /post, but this test assertion is based on the old
+          // httpbin behavior.
+          // The assertion in the proxyReqOptDecorator above verifies the test title.
+          //var response = Buffer.from(res.body.attachment.data).toString('base64');
+          //assert(response.indexOf(pngData.toString('base64')) >= 0, 'response should include original raw data');
+          done(err);
+        });
+    });
+
+  });
+
+  // In this case, the package `raw-body` will print error stack which does not mater.
   it('should get 413 by posting file which is larger than 1mb without setting limit', function(done) {
-    var filename = os.tmpdir() + '/koa-even-better-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
+    var filename = os.tmpdir() + '/koa-better-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
     var app = new Koa();
     app.use(proxy('localhost:8109', {
     }));
@@ -36,7 +68,7 @@ describe('body encoding', function() {
         .attach('image', filename)
         .expect(413)
         .end(function(err) {
-          fs.unlink(filename);
+          fs.unlink(filename, function() {});
           assert(err === null);
           if (err) { return done(err); }
           done();
@@ -45,7 +77,7 @@ describe('body encoding', function() {
   });
 
   it('should not fail on large limit', function(done) {
-    var filename = os.tmpdir() + '/koa-even-better-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
+    var filename = os.tmpdir() + '/koa-better-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
     var app = new Koa();
     app.use(proxy('localhost:8109', {
       // This case `parseReqBody` should not be set to false,
@@ -58,7 +90,7 @@ describe('body encoding', function() {
         .attach('image', filename)
         .expect(200)
         .end(function(err) {
-          fs.unlink(filename);
+          fs.unlink(filename, function() {});
           assert(err === null);
           if (err) { return done(err); }
           done();
@@ -69,7 +101,7 @@ describe('body encoding', function() {
   describe('when user sets parseReqBody', function() {
 
     it('should not parse body', function(done) {
-      var filename = os.tmpdir() + '/koa-even-better-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
+      var filename = os.tmpdir() + '/koa-better-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
       var app = new Koa();
       app.use(proxy('localhost:8109', {
         parseReqBody: false,
@@ -85,7 +117,7 @@ describe('body encoding', function() {
           .post('/post')
           .attach('image', filename)
           .end(function(err) {
-            fs.unlink(filename);
+            fs.unlink(filename, function() {});
             // This test is both broken and I think unnecessary.
             // Its broken because http.bin no longer supports /post, but this test assertion is based on the old
             // httpbin behavior.
